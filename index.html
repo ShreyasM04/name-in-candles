@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Your name in candles</title>
 <meta name="description" content="Type your name and watch it get drawn out of live crypto candlestick charts. It looks different every minute.">
-<!-- EDIT: replace YOUR-SITE.netlify.app (two places below) with your site's real address, so LinkedIn shows a preview image -->
+<!-- Link preview for LinkedIn and other sites -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="Your name in candles">
 <meta property="og:description" content="Type your name and watch it get drawn out of live crypto candlestick charts. It looks different every minute.">
-<meta property="og:url" content="https://YOUR-SITE.netlify.app/">
-<meta property="og:image" content="https://YOUR-SITE.netlify.app/preview.png">
+<meta property="og:url" content="https://nameincandles.netlify.app/">
+<meta property="og:image" content="https://nameincandles.netlify.app/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="627">
 <meta name="twitter:card" content="summary_large_image">
@@ -411,15 +411,20 @@
 
   /* ---------- letter shapes ---------- */
   let maskCache = { key:"", mask:null };
-  function getMask(text, pw, ph){
-    const key = [text, fontReady, Math.round(pw / 20), Math.round(ph / 20)].join("|");
+  function getMask(text){
+    const key = text + "|" + fontReady;
     if (maskCache.key === key) return maskCache.mask;
     const FS = 240, c = document.createElement("canvas"), g = c.getContext("2d", { willReadFrequently:true });
-    const gap = FS * 0.16, spaceW = FS * 0.42;
     g.font = `800 ${FS}px ${LETTER_FONT}`;
-    const widthOf = str => { const ch = [...str]; return ch.reduce((a, x) => a + (x === " " ? spaceW : g.measureText(x).width), 0) + gap * Math.max(0, ch.length - 1); };
+    const plainWidth = str => [...str].reduce((a, x) => a + (x === " " ? FS * 0.42 : g.measureText(x).width + FS * 0.16), 0);
+    const lines = chooseLines(text, plainWidth);
+    // Longer lines get slightly narrower letters and tighter spacing, so the letters can stay taller
+    const longest = Math.max(...lines.map(l => [...l].length));
+    const squeeze = longest <= 5 ? 1 : clamp(1 - (longest - 5) * 0.045, 0.78, 1);
+    const gap = FS * (longest <= 5 ? 0.16 : 0.11), spaceW = FS * 0.42 * squeeze;
+    const charW = ch => ch === " " ? spaceW : g.measureText(ch).width * squeeze;
+    const widthOf = str => { const ch = [...str]; return ch.reduce((a, x) => a + charW(x), 0) + gap * Math.max(0, ch.length - 1); };
     const lineH = FS * 1.12;
-    const lines = chooseLines(text, widthOf, FS, lineH, pw, ph);
     const widths = lines.map(widthOf), maxW = Math.max(...widths);
     c.width = Math.ceil(maxW + FS * 0.4); c.height = Math.ceil(FS * 0.75 + lineH * lines.length);
     g.font = `800 ${FS}px ${LETTER_FONT}`; g.fillStyle = "#000"; g.textBaseline = "alphabetic";
@@ -428,8 +433,11 @@
     lines.forEach((line, li) => {
       let x = FS * 0.2 + (maxW - widths[li]) / 2;
       for (const ch of line){
-        const a = ch === " " ? spaceW : g.measureText(ch).width;
-        if (ch !== " "){ g.fillText(ch, x, bases[li]); spans.push({ ch, line: li, xa: x, xb: x + a, ox: x }); }
+        const a = charW(ch);
+        if (ch !== " "){
+          g.save(); g.translate(x, bases[li]); g.scale(squeeze, 1); g.fillText(ch, 0, 0); g.restore();
+          spans.push({ ch, line: li, xa: x, xb: x + a });
+        }
         x += a + gap;
       }
     });
@@ -458,35 +466,33 @@
     return mask;
   }
 
-  // Use 1, 2 or 3 lines, whichever lets the letters be biggest on this chart. Breaks go at spaces
-  // where possible; a long word only gets split if that makes the letters a lot bigger.
-  const LINE_FILL = [0, 0.6, 0.74, 0.8];
-  function chooseLines(text, widthOf, FS, lineH, pw, ph){
-    const chars = [...text], n = chars.length;
-    const breaks = [];
-    for (let i = 1; i < n; i++){
-      if (chars[i] === " ") breaks.push({ cut: i, next: i + 1, mid: false });
-      else if (chars[i - 1] !== " ") breaks.push({ cut: i, next: i, mid: true });
-    }
-    const score = parts => {
-      const lines = parts.map(([a, b]) => chars.slice(a, b).join("").trim());
-      if (lines.some(l => !l)) return null;
-      const ws = lines.map(widthOf), w = Math.max(...ws), h = FS * 0.72 + lineH * (lines.length - 1);
-      const size = Math.min(ph * LINE_FILL[lines.length] / h, pw * 0.92 / w);
-      const balance = 1 - 0.03 * (w - Math.min(...ws)) / w;   // when sizes tie, prefer evenly sized lines
-      return { lines, value: size * balance * (1 - 0.06 * (lines.length - 1)) };
-    };
-    let best = score([[0, n]]);
-    const consider = (parts, mids) => { const r = score(parts); if (r){ r.value *= Math.pow(0.8, mids); if (r.value > best.value) best = r; } };
-    for (const b of breaks) consider([[0, b.cut], [b.next, n]], +b.mid);
-    if (n >= 6){
-      for (let x = 0; x < breaks.length; x++) for (let y = x + 1; y < breaks.length; y++){
-        const b1 = breaks[x], b2 = breaks[y];
-        if (b2.cut <= b1.next) continue;
-        consider([[0, b1.cut], [b1.next, b2.cut], [b2.next, n]], +b1.mid + +b2.mid);
+  // Names of up to 10 characters always stay on one line; the letters just get smaller.
+  // Longer names break at spaces into the fewest lines of 10 characters or less, as evenly as possible.
+  // A single word longer than 10 characters is the only thing that ever gets split.
+  const MAX_PER_LINE = 10;
+  const LINE_FILL = [0, 0.6, 0.74, 0.8, 0.84];
+  function chooseLines(text, widthOf){
+    if ([...text].length <= MAX_PER_LINE) return [text];
+    const words = text.split(" ").flatMap(w => {
+      const ch = [...w]; if (ch.length <= MAX_PER_LINE) return [w];
+      const parts = Math.ceil(ch.length / MAX_PER_LINE), size = Math.ceil(ch.length / parts), out = [];
+      for (let i = 0; i < ch.length; i += size) out.push(ch.slice(i, i + size).join(""));
+      return out;
+    });
+    let best = null;
+    const combos = 1 << Math.max(0, words.length - 1);
+    for (let mask = 0; mask < combos; mask++){
+      const lines = []; let cur = [words[0]];
+      for (let i = 1; i < words.length; i++){
+        if (mask & (1 << (i - 1))){ lines.push(cur.join(" ")); cur = [words[i]]; } else cur.push(words[i]);
       }
+      lines.push(cur.join(" "));
+      if (lines.some(l => [...l].length > MAX_PER_LINE)) continue;
+      const ws = lines.map(widthOf), widest = Math.max(...ws), spread = widest - Math.min(...ws);
+      if (!best || lines.length < best.lines.length || (lines.length === best.lines.length && (widest < best.widest - 0.5 || (Math.abs(widest - best.widest) <= 0.5 && spread < best.spread))))
+        best = { lines, widest, spread };
     }
-    return best.lines;
+    return best ? best.lines : [text];
   }
 
   // Split a letter into N columns and each column into its solid strokes, in reading order
@@ -522,7 +528,7 @@
   // time from the newest candle, filling the letter from its last spot to its first: each spot takes the
   // next candle whose real size is within about a third of the spot's size. Candles that would run off
   // the chart area are skipped. Spots nothing fits get the closest-sized candle left over.
-  function fillFromChart(secs, s, yMin, yMax){
+  function fillFromChart(secs, s, yMin, yMax, band){
     const n = s.candles.length; if (n < 4) return null;
     const T = secs.map(q => q.seg).sort((a, b) => b - a);
     let k = 0;
@@ -531,7 +537,7 @@
     const used = new Uint8Array(n), assign = new Int32Array(secs.length).fill(-1);
     let ptr = n - 1, inBand = 0;
     for (let q = secs.length - 1; q >= 0; q--){
-      const sec = secs[q], lo = 0.65 * sec.seg / k, hi = 1.35 * sec.seg / k;
+      const sec = secs[q], lo = band[0] * sec.seg / k, hi = band[1] * sec.seg / k;
       for (let i = ptr; i >= 0; i--){
         if (used[i] || s.b[i] < lo || s.b[i] > hi) continue;
         const pl = place(sec, s, i, k);
@@ -559,16 +565,16 @@
 
   // Try every market and timeframe for this letter; keep the chart that fits the most spots,
   // never reusing a market another letter already took
-  function chooseChart(secs, usedMarkets, yMin, yMax){
+  function chooseChart(secs, usedMarkets, yMin, yMax, band){
     let best = null;
     S.series.forEach((s, si) => {
       if (usedMarkets.has(s.sym)) return;
-      const r = fillFromChart(secs, s, yMin, yMax);
+      const r = fillFromChart(secs, s, yMin, yMax, band);
       if (!r) return;
       const score = r.fit + 0.05 * r.fresh;   // all else equal, prefer the chart that uses the most recent candles
       if (!best || score > best.score) best = { si, score, ...r };
     });
-    if (!best && usedMarkets.size){ usedMarkets.clear(); return chooseChart(secs, usedMarkets, yMin, yMax); }
+    if (!best && usedMarkets.size){ usedMarkets.clear(); return chooseChart(secs, usedMarkets, yMin, yMax, band); }
     return best;
   }
 
@@ -577,14 +583,14 @@
     if (!S.series.length || W < 50) return null;
     const m = { l:16, r:16, t:14, b:14 };
     const pw = W - m.l - m.r, ph = H - m.t - m.b;
-    const mask = getMask(S.name, pw, ph);
+    const mask = getMask(S.name);
     if (!mask) return { W, H, pitch: 8, letters: [], pieces: [], left: m.l, top: m.t, textCols: 0, stagger: 0, dur: 0 };
     const aspect = (mask.x1 - mask.x0 + 1) / (mask.y1 - mask.y0 + 1);
     const Lh = Math.min(ph * LINE_FILL[mask.lines], pw * 0.92 / aspect);
     const scale = Lh / (mask.y1 - mask.y0 + 1), textW = (mask.x1 - mask.x0 + 1) * scale;
     const left = m.l + (pw - textW) / 2, top = m.t + (ph - Lh) / 2;
     const X = xm => left + (xm - mask.x0) * scale, Y = ym => top + (ym - mask.y0) * scale;
-    const unit = mask.FS * 0.68 / S.density;
+    const unit = Math.max(mask.FS * 0.68 / S.density, 4.5 / scale);
 
     const usedMarkets = new Set(), letters = [], pieces = [];
     let col0 = 0;
@@ -597,7 +603,9 @@
       const box = { xa: X(sp.xa), xb: X(sp.xb), ya: Y(sp.top), yb: Y(sp.bot), base: Y(mask.bases[sp.line]) };
       const letter = { ch: sp.ch, box, N, pick: null, line: sp.line };
       letters.push(letter);
-      const pick = secs.length ? chooseChart(secs, usedMarkets, 3, H - 3) : null;
+      const tight = clamp((70 - (box.yb - box.ya)) / 35, 0, 1);   // 0 for big letters, 1 for tiny ones
+      const band = [0.65 + 0.13 * tight, 1.35 - 0.12 * tight];
+      const pick = secs.length ? chooseChart(secs, usedMarkets, 3, H - 3, band) : null;
       if (pick){
         const s = S.series[pick.si];
         usedMarkets.add(s.sym);
@@ -673,7 +681,19 @@
     S.cssW = canvas.clientWidth; S.cssH = canvas.clientHeight;
     canvas.width = Math.round(S.cssW * S.dpr); canvas.height = Math.round(S.cssH * S.dpr);
   }
-  function relayout(){ S.L = computeLayout(S.cssW, S.cssH); S.hover = null; hideTip(true); }
+  function fitCanvasHeight(){
+    const W = canvas.clientWidth;
+    if (W >= 640){ if (canvas.style.height) canvas.style.height = ""; return; }
+    const mask = getMask(S.name); if (!mask) return;
+    const aspect = (mask.x1 - mask.x0 + 1) / (mask.y1 - mask.y0 + 1);
+    const Lh = (W - 32) * 0.92 / aspect, h = Math.round(clamp(Lh / LINE_FILL[mask.lines] + 28, 160, 640));
+    if (Math.abs(canvas.clientHeight - h) > 2) canvas.style.height = h + "px";
+  }
+  function relayout(){
+    if (S.series.length) fitCanvasHeight();
+    if (canvas.clientWidth !== S.cssW || canvas.clientHeight !== S.cssH) sizeCanvas();
+    S.L = computeLayout(S.cssW, S.cssH); S.hover = null; hideTip(true);
+  }
 
   /* ---------- status and summary ---------- */
   function setStatus(kind, text){ statusEl.className = "status " + kind; statusText.textContent = text; }

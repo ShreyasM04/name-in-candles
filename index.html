@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your name in candles</title>
+<meta name="description" content="Type your name and watch it get drawn out of live crypto candlestick charts. It looks different every minute.">
+<!-- EDIT: replace YOUR-SITE.netlify.app (two places below) with your site's real address, so LinkedIn shows a preview image -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Your name in candles">
+<meta property="og:description" content="Type your name and watch it get drawn out of live crypto candlestick charts. It looks different every minute.">
+<meta property="og:url" content="https://YOUR-SITE.netlify.app/">
+<meta property="og:image" content="https://YOUR-SITE.netlify.app/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='9' width='7' height='15' fill='%230F9D58'/%3E%3Crect x='9' y='4' width='1.5' height='25' fill='%230F9D58'/%3E%3Crect x='19' y='6' width='7' height='12' fill='%23DB3A3D'/%3E%3Crect x='22' y='3' width='1.5' height='20' fill='%23DB3A3D'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E9EEE9;
+    --sheet:#F6F8F5;
+    --grid:#DDE4DF;
+    --rule:#BFCAC3;
+    --ink:#1B2A35;
+    --muted:#5D6E76;
+    --up:#0F9D58;
+    --down:#DB3A3D;
+    --amber:#C98A12;
+    color-scheme: light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.45}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 44px}
+  header{display:flex;justify-content:space-between;align-items:baseline;gap:8px 24px;flex-wrap:wrap;margin-bottom:22px}
+  h1{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:-.01em}
+  .status{margin:0;font-size:.88rem;color:var(--muted);font-variant-numeric:tabular-nums;max-width:64ch}
+  .status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:8px;vertical-align:1px}
+  .status.live .dot{background:var(--up);animation:pulse 2s ease-in-out infinite}
+  .status.scan .dot{background:var(--ink);animation:pulse .9s ease-in-out infinite}
+  .status.sim .dot{background:var(--amber)}
+  @keyframes pulse{50%{opacity:.3}}
+
+  .controls{display:grid;grid-template-columns:1fr auto auto;gap:12px 20px;align-items:end;margin-bottom:16px}
+  .density{min-width:200px}
+  .density label{font-variant-numeric:tabular-nums}
+  #density{width:100%;height:44px;margin:0;accent-color:var(--ink);cursor:pointer}
+  #density:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:.82rem;color:var(--muted)}
+  #name{font:800 clamp(1.7rem,4.2vw,2.7rem)/1.1 "Bricolage Grotesque",system-ui,sans-serif;
+    letter-spacing:.01em;text-transform:uppercase;color:var(--ink);background:transparent;
+    border:0;border-bottom:3px solid var(--ink);padding:4px 2px 6px;width:100%;border-radius:0}
+  #name::placeholder{color:#9AA8A1;text-transform:none;font-weight:700}
+  #name:focus,#name:focus-visible{outline:none;border-bottom-color:var(--up);box-shadow:0 3px 0 0 var(--up)}
+  button,.keyrow input{font:500 .95rem "Bricolage Grotesque",system-ui,sans-serif;color:var(--ink)}
+  button{height:44px;padding:0 18px;border-radius:6px;border:1.5px solid var(--ink);background:var(--ink);color:#fff;font-weight:700;cursor:pointer}
+  button.quiet{background:transparent;color:var(--ink)}
+  button.link{height:auto;padding:0;border:0;background:none;color:var(--ink);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+  button:hover{filter:brightness(1.12)}
+  button:disabled{opacity:.55;cursor:progress}
+  button:focus-visible,.keyrow input:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+  .keyrow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0 0 16px;padding:12px 14px;
+    background:#FFF6E3;border:1px solid #EAD4A6;border-radius:6px;font-size:.92rem}
+  .keyrow[hidden]{display:none}
+  .keyrow input{height:38px;padding:0 10px;border:1.5px solid var(--ink);border-radius:6px;background:#fff;min-width:240px;flex:1}
+  .keyrow button{height:38px}
+  .keyrow a{color:var(--ink);font-weight:700}
+
+  .simbanner{margin:0 0 12px;padding:12px 14px;background:#FFF1D6;border:1.5px solid var(--amber);border-radius:6px;font-size:.95rem;font-weight:600;color:#5A3D00}
+  .simbanner[hidden]{display:none}
+  .chart{position:relative;background:var(--sheet);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+  canvas{display:block;width:100%;height:clamp(300px,46vw,520px);cursor:crosshair}
+  .progress{position:absolute;left:0;top:0;height:3px;width:0;background:var(--ink);transition:width .2s linear,opacity .4s}
+  .progress.done{opacity:0}
+  .tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;border-radius:6px;padding:8px 10px;
+    font-size:12px;line-height:1.5;font-variant-numeric:tabular-nums;display:grid;grid-template-columns:auto auto;gap:0 12px;
+    opacity:0;transition:opacity .12s;white-space:nowrap;z-index:2}
+  .tip.on{opacity:1}
+  .tip b{grid-column:1/-1;font-weight:700;font-size:13px}
+  .tip .sub{grid-column:1/-1;color:#A9B8BF;margin-bottom:3px}
+  .tip .k{color:#A9B8BF}
+  .tip .up{color:#7FE0AE}.tip .down{color:#FF9C9E}
+
+  .credit{margin:28px 0 0;padding-top:16px;border-top:1px solid var(--rule);font-size:.95rem;color:var(--muted)}
+  .credit a{color:var(--ink);font-weight:700;text-underline-offset:3px}
+  footer{display:flex;justify-content:space-between;align-items:flex-start;gap:16px 28px;flex-wrap:wrap;margin-top:16px}
+  .about{max-width:70ch;display:flex;flex-direction:column;gap:8px}
+  .about p{margin:0;color:var(--muted);font-size:.92rem}
+  #summary{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  @media (max-width:640px){
+    .wrap{padding:20px 14px 36px}
+    .controls{grid-template-columns:1fr}
+    .density{min-width:0}
+  }
+  @media (prefers-reduced-motion:reduce){.status .dot{animation:none!important}.progress{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Your name in candles</h1>
+    <p class="status" id="status" role="status"><span class="dot"></span><span id="statusText">Starting up...</span></p>
+  </header>
+
+  <div class="controls">
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Type your name">
+    </div>
+    <div class="field density">
+      <label for="density">Candles across each letter: <span id="densityVal">7</span></label>
+      <input id="density" type="range" min="3" max="14" step="1" value="7">
+    </div>
+    <button id="draw" type="button">Rescan and draw</button>
+  </div>
+
+  <div class="keyrow" id="keyrow" hidden>
+    <span>US stock candles come from Twelve Data, which needs a free API key.</span>
+    <input id="key" type="text" placeholder="Paste your Twelve Data key" autocomplete="off" spellcheck="false" aria-label="Twelve Data API key">
+    <button id="keysave" type="button">Save key</button>
+    <a href="https://twelvedata.com" target="_blank" rel="noopener">Get a free key</a>
+  </div>
+
+  <div class="simbanner" id="simbanner" role="alert" hidden></div>
+
+  <div class="chart" id="chartwrap">
+    <canvas id="chart" aria-label="Your name drawn with real candlesticks from across the market"></canvas>
+    <div class="progress done" id="progress"></div>
+    <div class="tip" id="tip" aria-hidden="true"></div>
+  </div>
+
+  <footer>
+    <div class="about">
+      <p id="summary"></p>
+      <p>Each letter is built from one market's real chart. Reading the letter left to right walks forward in time through that chart, and each candle drops into the next spot of the letter it roughly fits, within about a third of the size. Candles are never resized: green ones rise from the bottom of their spot and red ones hang from the top, wherever the market left them. So stems are uneven, edges are ragged and wicks cross gaps. Every letter uses a different market, and the picks change every minute as the market moves. Hover any candle to see where it came from.</p>
+      <p><button class="link" id="stocksToggle" type="button">Add US stocks to the scan</button></p>
+    </div>
+    <button id="save" class="quiet" type="button">Save as PNG</button>
+  </footer>
+  <!-- EDIT: put your name and your LinkedIn profile link here. The credit stays hidden until YOUR NAME is replaced. -->
+  <p class="credit" id="credit">Built by <a id="creditLink" href="https://www.linkedin.com/in/YOUR-PROFILE" target="_blank" rel="noopener">YOUR NAME</a></p>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ---------- setup ---------- */
+  const $ = s => document.querySelector(s);
+  const canvas = $("#chart"), wrap = $("#chartwrap"), tip = $("#tip"), progress = $("#progress");
+  const ctx = canvas.getContext("2d");
+  const nameIn = $("#name"), drawBtn = $("#draw"), densityIn = $("#density"), densityVal = $("#densityVal");
+  const statusEl = $("#status"), statusText = $("#statusText"), summaryEl = $("#summary"), simBanner = $("#simbanner");
+  const creditEl = $("#credit"), creditLink = $("#creditLink");
+  const creditName = creditLink.textContent.trim();
+  const hasCredit = creditName && creditName !== "YOUR NAME";
+  if (!hasCredit) creditEl.hidden = true;
+  const keyRow = $("#keyrow"), keyIn = $("#key"), keySave = $("#keysave"), saveBtn = $("#save"), stocksToggle = $("#stocksToggle");
+
+  const COLORS = { sheet:"#F6F8F5", grid:"#DDE4DF", ink:"#1B2A35", muted:"#5D6E76", rule:"#BFCAC3", up:"#0F9D58", down:"#DB3A3D", flat:"#5D6E76" };
+  const LETTER_FONT = '"Bricolage Grotesque", "Arial Black", "Segoe UI", sans-serif';
+  const UI_FONT = '"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif';
+  const REFRESH_MS = 60000, STOCK_REFRESH_MS = 15 * 60000, MAX_CRYPTO = 60, MINUTE = 60000;
+
+  // Coinbase markets to scan, most active first. Any that no longer exist are skipped.
+  const CRYPTO_BASES = ["BTC","ETH","SOL","XRP","DOGE","ADA","AVAX","LINK","LTC","BCH","DOT","SHIB","UNI","XLM","ATOM",
+    "NEAR","APT","ARB","OP","SUI","HBAR","FIL","ICP","AAVE","INJ","RENDER","FET","GRT","ETC","ALGO","SEI","TIA","PEPE",
+    "BONK","WIF","ONDO","STX","IMX","LDO","CRV","SNX","MKR","COMP","SAND","MANA","AXS","APE","XTZ","CHZ","ENS","JASMY",
+    "ZEC","POL","QNT","FLOW","MINA","KAVA","1INCH","BAT","YFI"];
+  // Pegged or wrapped coins just mirror another price, so they add nothing
+  const SKIP_BASES = new Set(["USDT","USDC","DAI","PYUSD","EURC","GUSD","PAX","BUSD","TUSD","USDS","FDUSD","GYEN","WBTC","CBETH","MSOL","STETH","LSETH","WETH","CBBTC"]);
+  const STOCKS = ["SPY","QQQ","AAPL","MSFT","NVDA","AMZN","META","TSLA"];
+
+  const store = {
+    get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+    set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+    del(k){ try { localStorage.removeItem(k); } catch(e){} }
+  };
+  const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Inside a preview panel (like Claude's), outside connections are blocked
+  const inPreview = (() => { try { return window.self !== window.top; } catch(e){ return true; } })();
+
+  const S = {
+    name: "YOUR NAME",
+    density: Math.max(3, Math.min(14, parseInt(store.get("cn.across"), 10) || 7)),
+    series: [], meta: null, source: null, note: "", fetchedAt: null, stockCache: null,
+    L: null, animStart: -1e9, raf: 0, hover: null, scanning: false,
+    cssW: 0, cssH: 0, dpr: 1
+  };
+  let fontReady = false;
+
+  /* ---------- helpers ---------- */
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const easeOut = p => 1 - Math.pow(1 - p, 3);
+  const pad2 = n => String(n).padStart(2, "0");
+  const fmtHM = d => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const isToday = d => d.toDateString() === new Date().toDateString();
+  const fmtDayTime = d => isToday(d) ? fmtHM(d) : `${d.toLocaleDateString(undefined,{weekday:"short"})} ${fmtHM(d)}`;
+  const fmtClock = d => `${fmtHM(d)}:${pad2(d.getSeconds())}`;
+  const fmtInt = n => n.toLocaleString();
+  const shortSym = s => s.replace(/-USD$/, "");
+  function fmtPrice(p){
+    const a = Math.abs(p), dec = a >= 1 ? 2 : a >= 0.01 ? 4 : a >= 0.0001 ? 6 : 8;
+    return p.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  function hashStr(s){ let h = 2166136261; for (const ch of s){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function mulberry32(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function cleanName(v){
+    const s = v.toUpperCase().replace(/[^\p{L}\p{N} .'&!?-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 24);
+    return s || "YOUR NAME";
+  }
+  const dirOf = k => k.c > k.o ? 1 : k.c < k.o ? -1 : 0;
+  const colorOf = d => d > 0 ? COLORS.up : d < 0 ? COLORS.down : COLORS.flat;
+
+  /* ---------- market data ---------- */
+  // Every candle is kept exactly as it came, including flat ones; a real chart has those too
+  function candle(t, o, h, l, c){
+    if (![o,h,l,c].every(Number.isFinite) || isNaN(t) || o <= 0) return null;
+    if (h < Math.max(o, c) || l > Math.min(o, c)) return null;
+    return { t, o, h, l, c };
+  }
+  // run[i] = how many back-to-back minutes end at candle i, so we only ever use unbroken stretches of chart
+  function makeSeries(sym, kind, candles, tf = 1){
+    candles.sort((a, b) => a.t - b.t);
+    const run = new Int32Array(candles.length), step = tf * MINUTE;
+    candles.forEach((k, i) => { run[i] = i > 0 && k.t - candles[i - 1].t === step ? run[i - 1] + 1 : 1; });
+    // sizes as a share of price, so a letter's scale works the same on any market
+    const b = Float64Array.from(candles, k => Math.abs(k.c - k.o) / k.o);
+    const uw = Float64Array.from(candles, k => (k.h - Math.max(k.o, k.c)) / k.o);
+    const lw = Float64Array.from(candles, k => (Math.min(k.o, k.c) - k.l) / k.o);
+    const bSorted = Float64Array.from(b).sort().reverse();
+    return { sym, kind, candles, run, tf, b, uw, lw, bSorted };
+  }
+  // The same market's 2, 3, 5, 10 and 15-minute charts, built from its 1-minute candles exactly the way
+  // any charting site builds them: first open, highest high, lowest low, last close in each period.
+  const TIMEFRAMES = [2, 3, 5, 10, 15];
+  function withTimeframes(base){
+    const out = [base];
+    for (const tf of TIMEFRAMES){
+      const step = tf * MINUTE, buckets = new Map();
+      for (const k of base.candles){
+        const b = Math.floor(k.t / step) * step, cur = buckets.get(b);
+        if (!cur) buckets.set(b, { t: b, o: k.o, h: k.h, l: k.l, c: k.c });
+        else { cur.h = Math.max(cur.h, k.h); cur.l = Math.min(cur.l, k.l); cur.c = k.c; }
+      }
+      const cs = [...buckets.values()];
+      if (cs.length >= 4) out.push(makeSeries(base.sym, base.kind, cs, tf));
+    }
+    return out;
+  }
+
+  async function fetchJSON(url){
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 9000);
+    try {
+      const r = await fetch(url, { cache: "no-store", signal: ctl.signal });
+      const j = await r.json().catch(() => null);
+      if (!r.ok && !j) throw new Error(`server returned ${r.status}`);
+      return j;
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("the request timed out");
+      throw new Error(e.message === "Failed to fetch" ? "no connection" : e.message);
+    } finally { clearTimeout(timer); }
+  }
+
+  const CB_DIRECT = "https://api.exchange.coinbase.com";
+  let cbBase = null;
+  async function cbFetch(path){
+    const bases = cbBase ? [cbBase] : (location.protocol.startsWith("http") ? ["cb", CB_DIRECT] : [CB_DIRECT]);
+    let err = null;
+    for (const base of bases){
+      try {
+        const j = await fetchJSON(`${base}${path}`);
+        if (j !== null){ cbBase = base; return j; }
+      } catch (e) { err = e; }
+    }
+    throw err || new Error("no connection");
+  }
+
+  async function listCryptoMarkets(){
+    let ids = CRYPTO_BASES.map(b => b + "-USD");
+    try {
+      const all = await cbFetch("/products");
+      if (Array.isArray(all) && all.length){
+        const live = all.filter(p => p.quote_currency === "USD" && p.status === "online" && !p.trading_disabled && !SKIP_BASES.has(p.base_currency)).map(p => p.id);
+        const liveSet = new Set(live);
+        const keep = ids.filter(id => liveSet.has(id));
+        for (const id of live.sort()){ if (keep.length >= MAX_CRYPTO) break; if (!keep.includes(id)) keep.push(id); }
+        if (keep.length) ids = keep;
+      }
+    } catch(e){}
+    return ids.slice(0, MAX_CRYPTO);
+  }
+
+  // Coinbase allows about 10 public requests a second, so stay under that
+  async function scanCrypto(ids, onProgress){
+    let next = 0, idx = 0, done = 0, lastErr = "";
+    const throttle = async () => { const now = performance.now(), wait = Math.max(0, next - now); next = Math.max(now, next) + 130; if (wait) await sleep(wait); };
+    const out = [];
+    async function worker(){
+      while (idx < ids.length){
+        const id = ids[idx++];
+        let rows = null;
+        for (let attempt = 0; attempt < 2 && !rows; attempt++){
+          await throttle();
+          try {
+            const a = await cbFetch(`/products/${id}/candles?granularity=60`);
+            if (Array.isArray(a)) rows = a;
+            else if (a && /rate/i.test(a.message || "")) await sleep(1200);
+            else break;
+          } catch (e) { lastErr = e.message; break; }
+        }
+        if (rows && rows.length){
+          // Coinbase rows: [time, low, high, open, close, volume]
+          const cs = rows.map(r => candle(r[0] * 1000, +r[3], +r[2], +r[1], +r[4])).filter(Boolean);
+          if (cs.length) out.push(...withTimeframes(makeSeries(id, "crypto", cs)));
+        }
+        done++; onProgress(done, ids.length);
+        if (done >= 8 && !out.length) idx = ids.length;   // can't reach Coinbase at all, stop early
+      }
+    }
+    await Promise.all(Array.from({ length: 5 }, worker));
+    return { series: out, error: out.length ? "" : (lastErr || "Coinbase sent no candles") };
+  }
+
+  async function scanStocks(key){
+    const url = `https://api.twelvedata.com/time_series?symbol=${STOCKS.join(",")}&interval=1min&outputsize=300&timezone=UTC&apikey=${encodeURIComponent(key)}`;
+    const j = await fetchJSON(url);
+    if (!j) throw new Error("Twelve Data sent nothing back");
+    if (j.status === "error") throw new Error((j.message || "Twelve Data refused the request").split(". ")[0]);
+    const out = [];
+    for (const sym of STOCKS){
+      const s = j[sym];
+      if (!s || s.status !== "ok" || !Array.isArray(s.values)) continue;
+      const cs = s.values.map(v => candle(Date.parse(v.datetime.replace(" ", "T") + "Z"), +v.open, +v.high, +v.low, +v.close)).filter(Boolean);
+      if (cs.length) out.push(...withTimeframes(makeSeries(sym, "stock", cs)));
+    }
+    if (!out.length) throw new Error("no stock candles came back");
+    return { series: out };
+  }
+
+  // Clearly labelled stand-in, used only when the market can't be reached
+  function simulateSeries(){
+    const now = Math.floor(Date.now() / MINUTE), out = [];
+    for (let a = 0; a < 24; a++){
+      const sym = `SIM-${String.fromCharCode(65 + a)}`, seed = hashStr(sym), cs = [];
+      let p = 10 + (seed % 900);
+      for (let i = 299; i >= 0; i--){
+        const minute = now - i, r = mulberry32(seed ^ Math.imul(minute, 2654435761));
+        const o = p, c = o * (1 + (r() - 0.5) * 0.006), sz = Math.abs(c - o) + o * 0.0004;
+        cs.push(candle(minute * MINUTE, o, Math.max(o, c) + sz * r() * r() * 2, Math.min(o, c) - sz * r() * r() * 2, c));
+        p = c;
+      }
+      out.push(...withTimeframes(makeSeries(sym, "sim", cs.filter(Boolean))));
+    }
+    return out;
+  }
+
+  async function scan(animate){
+    if (S.scanning) return;
+    S.scanning = true; drawBtn.disabled = true;
+    const showProgress = animate || !S.series.length;
+    if (showProgress){ setStatus("scan", "Finding markets..."); setProgress(0.03); }
+
+    let crypto = { series: [], error: "" };
+    try {
+      const ids = await listCryptoMarkets();
+      crypto = await scanCrypto(ids, (d, n) => { if (showProgress){ setProgress(d / n); setStatus("scan", `Scanning Coinbase: ${d} of ${n} markets`); } });
+    } catch (e) { crypto.error = e.message; }
+
+    const key = store.get("cn.key");
+    if (key){
+      const sc = S.stockCache;
+      if (!sc || sc.key !== key || Date.now() - sc.at > STOCK_REFRESH_MS){
+        if (showProgress) setStatus("scan", "Scanning US stocks...");
+        try { const r = await scanStocks(key); S.stockCache = { ...r, at: Date.now(), key, error: "" }; }
+        catch (e) { S.stockCache = { series: [], at: Date.now(), key, error: e.message }; }
+      }
+    } else S.stockCache = null;
+    const stocks = S.stockCache;
+
+    let series = crypto.series.concat(stocks ? stocks.series : []);
+    let source = "live";
+    if (!series.length){
+      // A failed background rescan keeps the last real picture instead of swapping in fake data
+      if (!animate && S.source === "live" && S.series.length){
+        S.note = crypto.error || "no candles came back";
+        updateStatus(true); finishScan(); return;
+      }
+      source = "sim"; S.note = crypto.error || "no candles came back";
+      series = simulateSeries();
+    }
+
+    S.series = series; S.source = source; S.fetchedAt = new Date();
+    S.latestT = series.reduce((m, s) => Math.max(m, s.candles.length ? s.candles[s.candles.length - 1].t : 0), 0);
+    const base = series.filter(s => s.tf === 1);
+    S.meta = { markets: base.length, scanned: base.reduce((a, s) => a + s.candles.length, 0), charts: series.length, stockError: stocks ? stocks.error : "" };
+    relayout();
+    if (animate) startAnim(); else render();
+    updateStatus(); updateSummary(); updateStocksToggle();
+    finishScan();
+  }
+  function finishScan(){ S.scanning = false; drawBtn.disabled = false; setProgress(1); }
+
+  /* ---------- letter shapes ---------- */
+  let maskCache = { key:"", mask:null };
+  function getMask(text, pw, ph){
+    const key = [text, fontReady, Math.round(pw / 20), Math.round(ph / 20)].join("|");
+    if (maskCache.key === key) return maskCache.mask;
+    const FS = 240, c = document.createElement("canvas"), g = c.getContext("2d", { willReadFrequently:true });
+    const gap = FS * 0.16, spaceW = FS * 0.42;
+    g.font = `800 ${FS}px ${LETTER_FONT}`;
+    const widthOf = str => { const ch = [...str]; return ch.reduce((a, x) => a + (x === " " ? spaceW : g.measureText(x).width), 0) + gap * Math.max(0, ch.length - 1); };
+    const lineH = FS * 1.12;
+    const lines = chooseLines(text, widthOf, FS, lineH, pw, ph);
+    const widths = lines.map(widthOf), maxW = Math.max(...widths);
+    c.width = Math.ceil(maxW + FS * 0.4); c.height = Math.ceil(FS * 0.75 + lineH * lines.length);
+    g.font = `800 ${FS}px ${LETTER_FONT}`; g.fillStyle = "#000"; g.textBaseline = "alphabetic";
+    const bases = lines.map((_, li) => Math.round(FS * 1.05 + li * lineH));
+    const spans = [];
+    lines.forEach((line, li) => {
+      let x = FS * 0.2 + (maxW - widths[li]) / 2;
+      for (const ch of line){
+        const a = ch === " " ? spaceW : g.measureText(ch).width;
+        if (ch !== " "){ g.fillText(ch, x, bases[li]); spans.push({ ch, line: li, xa: x, xb: x + a, ox: x }); }
+        x += a + gap;
+      }
+    });
+    const bands = bases.map((base, li) => [li === 0 ? 0 : base - FS * 0.9, li === bases.length - 1 ? c.height : base + FS * 0.22]);
+    const data = g.getImageData(0, 0, c.width, c.height).data, w = c.width;
+    let x0 = w, x1 = -1, y0 = c.height, y1 = -1;
+    for (let y = 0; y < c.height; y++){
+      const row = y * w;
+      for (let xx = 0; xx < w; xx++){
+        if (data[(row + xx) * 4 + 3] > 127){ if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; y1 = y; }
+      }
+    }
+    // Tighten each letter to where its ink actually is
+    for (const sp of spans){
+      const [ba, bb] = bands[sp.line]; let lo = Infinity, hi = -Infinity, top = Infinity, bot = -Infinity;
+      for (let y = Math.floor(ba); y < Math.min(c.height, Math.ceil(bb)); y++){
+        const row = y * w;
+        for (let xx = Math.max(0, Math.floor(sp.xa - FS * 0.05)); xx < Math.min(w, Math.ceil(sp.xb + FS * 0.05)); xx++){
+          if (data[(row + xx) * 4 + 3] > 127){ if (xx < lo) lo = xx; if (xx > hi) hi = xx; if (y < top) top = y; bot = y + 1; }
+        }
+      }
+      if (hi >= lo){ sp.xa = lo; sp.xb = hi + 1; sp.top = top; sp.bot = bot; } else sp.empty = true;
+    }
+    const mask = x1 < 0 ? null : { data, w, h: c.height, x0, x1, y0, y1, FS, lines: lines.length, spans: spans.filter(s => !s.empty), bases };
+    maskCache = { key, mask };
+    return mask;
+  }
+
+  // Use 1, 2 or 3 lines, whichever lets the letters be biggest on this chart. Breaks go at spaces
+  // where possible; a long word only gets split if that makes the letters a lot bigger.
+  const LINE_FILL = [0, 0.6, 0.74, 0.8];
+  function chooseLines(text, widthOf, FS, lineH, pw, ph){
+    const chars = [...text], n = chars.length;
+    const breaks = [];
+    for (let i = 1; i < n; i++){
+      if (chars[i] === " ") breaks.push({ cut: i, next: i + 1, mid: false });
+      else if (chars[i - 1] !== " ") breaks.push({ cut: i, next: i, mid: true });
+    }
+    const score = parts => {
+      const lines = parts.map(([a, b]) => chars.slice(a, b).join("").trim());
+      if (lines.some(l => !l)) return null;
+      const ws = lines.map(widthOf), w = Math.max(...ws), h = FS * 0.72 + lineH * (lines.length - 1);
+      const size = Math.min(ph * LINE_FILL[lines.length] / h, pw * 0.92 / w);
+      const balance = 1 - 0.03 * (w - Math.min(...ws)) / w;   // when sizes tie, prefer evenly sized lines
+      return { lines, value: size * balance * (1 - 0.06 * (lines.length - 1)) };
+    };
+    let best = score([[0, n]]);
+    const consider = (parts, mids) => { const r = score(parts); if (r){ r.value *= Math.pow(0.8, mids); if (r.value > best.value) best = r; } };
+    for (const b of breaks) consider([[0, b.cut], [b.next, n]], +b.mid);
+    if (n >= 6){
+      for (let x = 0; x < breaks.length; x++) for (let y = x + 1; y < breaks.length; y++){
+        const b1 = breaks[x], b2 = breaks[y];
+        if (b2.cut <= b1.next) continue;
+        consider([[0, b1.cut], [b1.next, b2.cut], [b2.next, n]], +b1.mid + +b2.mid);
+      }
+    }
+    return best.lines;
+  }
+
+  // Split a letter into N columns and each column into its solid strokes, in reading order
+  function letterSections(mask, sp, N){
+    const { data, w } = mask, cw = (sp.xb - sp.xa) / N, out = [];
+    const minRun = mask.FS * 0.04, minGap = mask.FS * 0.035;
+    for (let c = 0; c < N; c++){
+      const xa = sp.xa + c * cw, ns = clamp(Math.round(cw / 4), 5, 40), xs = [];
+      for (let s = 0; s < ns; s++) xs.push(Math.min(w - 1, Math.round(xa + (s + 0.5) * cw / ns)));
+      const runs = []; let start = -1;
+      for (let y = sp.top; y <= sp.bot; y++){
+        let on = false;
+        if (y < sp.bot){ let k = 0; for (const x of xs) if (data[(y * w + x) * 4 + 3] > 127) k++; on = k / ns >= 0.45; }
+        if (on && start < 0) start = y;
+        if (!on && start >= 0){ runs.push([start, y]); start = -1; }
+      }
+      const merged = [];
+      for (const r of runs){ const last = merged[merged.length - 1]; if (last && r[0] - last[1] < minGap) last[1] = r[1]; else merged.push(r.slice()); }
+      for (const r of merged) if (r[1] - r[0] >= minRun) out.push({ c, xa, xb: xa + cw, ya: r[0], yb: r[1] });
+    }
+    return out;
+  }
+
+  // Where a candle lands in a spot: green rises from the bottom, red hangs from the top
+  function place(sec, s, i, k){
+    const bh = s.b[i] * k, dir = dirOf(s.candles[i]);
+    const yt = dir > 0 ? sec.yb - bh : dir < 0 ? sec.ya : (sec.ya + sec.yb - bh) / 2;
+    return { yt, yb: yt + bh, yh: yt - s.uw[i] * k, yl: yt + bh + s.lw[i] * k, dir };
+  }
+
+  // Fill a letter from one chart. The letter's scale (k, pixels per unit of price move) is set so the
+  // chart has a couple of candles big enough for each of the letter's biggest strokes. Then walk back in
+  // time from the newest candle, filling the letter from its last spot to its first: each spot takes the
+  // next candle whose real size is within about a third of the spot's size. Candles that would run off
+  // the chart area are skipped. Spots nothing fits get the closest-sized candle left over.
+  function fillFromChart(secs, s, yMin, yMax){
+    const n = s.candles.length; if (n < 4) return null;
+    const T = secs.map(q => q.seg).sort((a, b) => b - a);
+    let k = 0;
+    for (let i = 0; i < T.length; i++){ const r = Math.min(n - 1, 2 * i + 1); if (s.bSorted[r] > 0) k = Math.max(k, T[i] / s.bSorted[r]); }
+    if (!(k > 0)) return null;
+    const used = new Uint8Array(n), assign = new Int32Array(secs.length).fill(-1);
+    let ptr = n - 1, inBand = 0;
+    for (let q = secs.length - 1; q >= 0; q--){
+      const sec = secs[q], lo = 0.65 * sec.seg / k, hi = 1.35 * sec.seg / k;
+      for (let i = ptr; i >= 0; i--){
+        if (used[i] || s.b[i] < lo || s.b[i] > hi) continue;
+        const pl = place(sec, s, i, k);
+        if (pl.yh < yMin || pl.yl > yMax) continue;
+        assign[q] = i; used[i] = 1; ptr = i - 1; inBand++; break;
+      }
+    }
+    for (let q = 0; q < secs.length; q++){
+      if (assign[q] >= 0) continue;
+      const sec = secs[q]; let best = -1, bd = Infinity;
+      for (let i = 0; i < n; i++){
+        if (used[i] || !(s.b[i] > 0)) continue;
+        const pl = place(sec, s, i, k);
+        if (pl.yh < yMin || pl.yl > yMax) continue;
+        const d = Math.abs(Math.log(s.b[i] * k / sec.seg));
+        if (d < bd){ bd = d; best = i; }
+      }
+      if (best >= 0){ assign[q] = best; used[best] = 1; }
+    }
+    let oldest = Infinity;
+    for (let q = 0; q < secs.length; q++) if (assign[q] >= 0) oldest = Math.min(oldest, s.candles[assign[q]].t);
+    const fresh = oldest === Infinity ? 0 : clamp(1 - (S.latestT - oldest) / (300 * MINUTE), 0, 1);
+    return { k, assign, fit: inBand / secs.length, fresh };
+  }
+
+  // Try every market and timeframe for this letter; keep the chart that fits the most spots,
+  // never reusing a market another letter already took
+  function chooseChart(secs, usedMarkets, yMin, yMax){
+    let best = null;
+    S.series.forEach((s, si) => {
+      if (usedMarkets.has(s.sym)) return;
+      const r = fillFromChart(secs, s, yMin, yMax);
+      if (!r) return;
+      const score = r.fit + 0.05 * r.fresh;   // all else equal, prefer the chart that uses the most recent candles
+      if (!best || score > best.score) best = { si, score, ...r };
+    });
+    if (!best && usedMarkets.size){ usedMarkets.clear(); return chooseChart(secs, usedMarkets, yMin, yMax); }
+    return best;
+  }
+
+  /* ---------- layout ---------- */
+  function computeLayout(W, H){
+    if (!S.series.length || W < 50) return null;
+    const m = { l:16, r:16, t:14, b:14 };
+    const pw = W - m.l - m.r, ph = H - m.t - m.b;
+    const mask = getMask(S.name, pw, ph);
+    if (!mask) return { W, H, pitch: 8, letters: [], pieces: [], left: m.l, top: m.t, textCols: 0, stagger: 0, dur: 0 };
+    const aspect = (mask.x1 - mask.x0 + 1) / (mask.y1 - mask.y0 + 1);
+    const Lh = Math.min(ph * LINE_FILL[mask.lines], pw * 0.92 / aspect);
+    const scale = Lh / (mask.y1 - mask.y0 + 1), textW = (mask.x1 - mask.x0 + 1) * scale;
+    const left = m.l + (pw - textW) / 2, top = m.t + (ph - Lh) / 2;
+    const X = xm => left + (xm - mask.x0) * scale, Y = ym => top + (ym - mask.y0) * scale;
+    const unit = mask.FS * 0.68 / S.density;
+
+    const usedMarkets = new Set(), letters = [], pieces = [];
+    let col0 = 0;
+    for (const sp of mask.spans){
+      const N = Math.max(2, Math.round((sp.xb - sp.xa) / unit));
+      const secs = letterSections(mask, sp, N).map(q => {
+        const ya = Y(q.ya), yb = Y(q.yb);
+        return { c: q.c, x: X((q.xa + q.xb) / 2), w: (q.xb - q.xa) * scale, ya, yb, seg: Math.max(2, yb - ya) };
+      });
+      const box = { xa: X(sp.xa), xb: X(sp.xb), ya: Y(sp.top), yb: Y(sp.bot), base: Y(mask.bases[sp.line]) };
+      const letter = { ch: sp.ch, box, N, pick: null, line: sp.line };
+      letters.push(letter);
+      const pick = secs.length ? chooseChart(secs, usedMarkets, 3, H - 3) : null;
+      if (pick){
+        const s = S.series[pick.si];
+        usedMarkets.add(s.sym);
+        const chosen = [];
+        secs.forEach((sec, q) => {
+          const i = pick.assign[q]; if (i < 0) return;
+          const k = s.candles[i], pl = place(sec, s, i, pick.k);
+          const piece = { letter, i: 0, j: col0 + sec.c, x: sec.x, w: sec.w, k, ...pl };
+          pieces.push(piece); chosen.push(piece);
+        });
+        chosen.sort((a, b) => a.k.t - b.k.t).forEach((p, n) => { p.i = n; });
+        letter.pick = { sym: s.sym, kind: s.kind, tf: s.tf, count: chosen.length, t0: chosen.length ? chosen[0].k.t : 0, t1: chosen.length ? chosen[chosen.length - 1].k.t : 0, fit: pick.fit };
+      }
+      col0 += N + 1;
+    }
+    return { W, H, pitch: unit * scale, letters, pieces, left, top, textCols: col0,
+             stagger: reduceMotion ? 0 : Math.min(55, 1500 / Math.max(1, col0)), dur: reduceMotion ? 0 : 380 };
+  }
+
+  /* ---------- drawing ---------- */
+  function drawScene(g, L, t){
+    const { W, H, pitch } = L;
+    g.fillStyle = COLORS.sheet; g.fillRect(0, 0, W, H);
+
+    const step = Math.max(16, pitch * Math.max(1, Math.round(22 / pitch)));
+    g.strokeStyle = COLORS.grid; g.lineWidth = 1; g.beginPath();
+    for (let x = L.left - Math.ceil(L.left / step) * step; x <= W; x += step){ const xx = Math.round(x) + 0.5; g.moveTo(xx, 0); g.lineTo(xx, H); }
+    for (let y = L.top - Math.ceil(L.top / step) * step; y <= H; y += step){ const yy = Math.round(y) + 0.5; g.moveTo(0, yy); g.lineTo(W, yy); }
+    g.stroke();
+
+    const ww = Math.max(1, Math.round(Math.min(3, pitch * 0.06)));
+    for (const p of L.pieces){
+      const prog = L.dur === 0 ? 1 : clamp((t - 100 - p.j * L.stagger) / L.dur, 0, 1);
+      if (prog <= 0) continue;
+      const e = easeOut(prog), bw = Math.max(1.5, p.w * 0.6);
+      g.fillStyle = colorOf(p.dir);
+      // wick first, the full high to low, drawn outward from the body as the candle forms
+      const mid = (p.yt + p.yb) / 2, wh = (p.yl - p.yh) * e;   // wick grows out from the body
+      g.fillRect(p.x - ww / 2, mid - (mid - p.yh) * e, ww, Math.max(1, wh));
+      const bh = Math.max(1, (p.yb - p.yt) * e);
+      g.fillRect(p.x - bw / 2, p.dir >= 0 ? p.yb - bh : p.yt, bw, bh);
+    }
+  }
+
+  function render(t){
+    ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
+    if (!S.L){
+      ctx.fillStyle = COLORS.sheet; ctx.fillRect(0, 0, S.cssW, S.cssH);
+      ctx.fillStyle = COLORS.muted; ctx.font = `500 15px ${UI_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("Scanning the market for charts...", S.cssW / 2, S.cssH / 2);
+      return;
+    }
+    if (t === undefined) t = performance.now() - S.animStart;
+    drawScene(ctx, S.L, t);
+    const p = S.hover;
+    if (p){
+      const pad = 3;
+      ctx.strokeStyle = COLORS.ink; ctx.lineWidth = 1.5;
+      ctx.strokeRect(Math.round(p.x - p.w / 2) + 0.5, Math.round(p.yh - pad) + 0.5, Math.round(p.w), Math.round(p.yl - p.yh + pad * 2));
+    }
+  }
+
+  function animTotal(){ return S.L ? 100 + S.L.textCols * S.L.stagger + S.L.dur + 800 : 0; }
+  function startAnim(){
+    cancelAnimationFrame(S.raf);
+    S.animStart = performance.now();
+    const tick = () => { const t = performance.now() - S.animStart; render(t); if (t < animTotal()) S.raf = requestAnimationFrame(tick); };
+    tick();
+  }
+
+  function sizeCanvas(){
+    S.dpr = Math.min(window.devicePixelRatio || 1, 3);
+    S.cssW = canvas.clientWidth; S.cssH = canvas.clientHeight;
+    canvas.width = Math.round(S.cssW * S.dpr); canvas.height = Math.round(S.cssH * S.dpr);
+  }
+  function relayout(){ S.L = computeLayout(S.cssW, S.cssH); S.hover = null; hideTip(true); }
+
+  /* ---------- status and summary ---------- */
+  function setStatus(kind, text){ statusEl.className = "status " + kind; statusText.textContent = text; }
+  function setProgress(f){ progress.classList.toggle("done", f >= 1); progress.style.width = (f >= 1 ? 100 : f * 100) + "%"; if (f >= 1) setTimeout(() => { if (progress.classList.contains("done")) progress.style.width = "0"; }, 450); }
+
+  function updateStatus(refreshFailed){
+    const M = S.meta;
+    if (!M) return;
+    const stockNote = M.stockError ? ` Stocks skipped: ${M.stockError}.` : "";
+    if (S.source === "live"){
+      if (refreshFailed) setStatus("sim", `The last rescan failed (${S.note}). Showing the picture from ${fmtClock(S.fetchedAt)}; trying again in a minute.`);
+      else setStatus("live", `Live: searched ${fmtInt(M.charts)} charts from ${M.markets} markets (${fmtInt(M.scanned)} one-minute candles) at ${fmtClock(S.fetchedAt)}. Rescans every minute.${stockNote}`);
+    } else {
+      setStatus("sim", `Not live: couldn't reach Coinbase (${S.note}).`);
+    }
+    if (S.source === "sim"){
+      simBanner.hidden = false;
+      simBanner.textContent = inPreview
+        ? "These are fake practice candles (the SIM labels), not market data. You're viewing this inside a preview panel, which blocks live data. Download the file and open it straight in Chrome, Safari or Edge."
+        : location.protocol === "file:"
+          ? "These are fake practice candles (the SIM labels), not market data, because your browser wouldn't let this file reach Coinbase. Put serve.py in the same folder, run it, and open http://localhost:8000 instead."
+          : "These are fake practice candles (the SIM labels), not market data, because Coinbase couldn't be reached. It will retry every minute.";
+    } else simBanner.hidden = true;
+  }
+
+  function updateSummary(){
+    const L = S.L;
+    if (!L || !L.letters.length){ summaryEl.textContent = ""; return; }
+    const parts = L.letters.filter(lt => lt.pick && lt.pick.count).map(lt =>
+      `${lt.ch} is ${lt.pick.sym}'s ${lt.pick.tf}-minute chart, ${fmtDayTime(new Date(lt.pick.t0))} to ${fmtHM(new Date(lt.pick.t1 + lt.pick.tf * MINUTE))}`);
+    const sim = S.source === "live" ? "" : " (simulated)";
+    summaryEl.textContent = `${S.name}${sim}: ${parts.join(", ")}.`;
+    canvas.setAttribute("aria-label", summaryEl.textContent);
+  }
+
+  function updateStocksToggle(){
+    const hasKey = !!store.get("cn.key");
+    stocksToggle.textContent = hasKey ? `US stocks are in the scan (${STOCKS.join(", ")}). Remove them` : "Add US stocks to the scan";
+  }
+
+  /* ---------- hover readout ---------- */
+  function pieceAt(x, y){
+    const L = S.L; if (!L) return null;
+    let best = null, bd = Infinity;
+    for (const p of L.pieces){
+      if (Math.abs(x - p.x) > p.w / 2) continue;
+      const d = y < p.yh - 4 ? p.yh - 4 - y : y > p.yl + 4 ? y - p.yl - 4 : 0;
+      if (d < bd){ bd = d; best = p; }
+    }
+    return bd <= 6 ? best : null;
+  }
+  function showTip(p, x, y){
+    const k = p.k, chg = (k.c - k.o) / k.o * 100, cls = p.dir > 0 ? "up" : p.dir < 0 ? "down" : "";
+    const where = p.letter.pick.kind === "stock" ? "US stock" : p.letter.pick.kind === "sim" ? "simulated" : "Coinbase";
+    tip.innerHTML =
+      `<b>${p.letter.pick.sym}</b><span class="sub">${where}, ${p.letter.pick.tf}-minute candle at ${fmtDayTime(new Date(k.t))}</span>` +
+      `<span class="sub">Letter ${p.letter.ch}, candle ${p.i + 1} of ${p.letter.pick.count} in time order</span>` +
+      `<span class="k">Open</span><span>${fmtPrice(k.o)}</span>` +
+      `<span class="k">High</span><span>${fmtPrice(k.h)}</span>` +
+      `<span class="k">Low</span><span>${fmtPrice(k.l)}</span>` +
+      `<span class="k">Close</span><span class="${cls}">${fmtPrice(k.c)} (${chg >= 0 ? "+" : ""}${chg.toFixed(3)}%)</span>`;
+    tip.classList.add("on");
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = x + 18; if (left + tw > S.cssW - 6) left = x - 18 - tw;
+    tip.style.left = Math.max(6, left) + "px";
+    tip.style.top = clamp(y - th / 2, 6, S.cssH - th - 6) + "px";
+  }
+  function hideTip(silent){ tip.classList.remove("on"); if (S.hover){ S.hover = null; if (!silent) render(); } }
+
+  canvas.addEventListener("pointermove", e => {
+    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const p = pieceAt(x, y);
+    if (!p){ hideTip(); return; }
+    if (p !== S.hover){ S.hover = p; render(); }
+    showTip(p, x, y);
+  });
+  canvas.addEventListener("pointerleave", () => hideTip());
+
+  /* ---------- PNG export ---------- */
+  function savePng(){
+    if (!S.L) return;
+    const W = S.cssW, H = S.cssH, cap = 64, s = 2;
+    const out = document.createElement("canvas"); out.width = W * s; out.height = (H + cap) * s;
+    const g = out.getContext("2d"); g.scale(s, s);
+    drawScene(g, S.L, Infinity);
+    g.fillStyle = COLORS.sheet; g.fillRect(0, H, W, cap);
+    g.fillStyle = COLORS.rule; g.fillRect(0, H, W, 1);
+    g.textAlign = "left"; g.textBaseline = "alphabetic";
+    g.fillStyle = COLORS.ink; g.font = `800 19px ${UI_FONT}`; g.fillText(S.name, 16, H + 28);
+    g.fillStyle = COLORS.muted; g.font = `500 13px ${UI_FONT}`;
+    const what = S.source === "live" ? "real 1-minute charts" : "simulated charts";
+    g.fillText(`Each letter built from one of ${S.L.letters.filter(l => l.pick).length} ${what}, picked ${S.fetchedAt.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})} at ${fmtHM(S.fetchedAt)}`, 16, H + 49);
+    const sig = `${hasCredit ? `Built by ${creditName}   ` : ""}${location.protocol.startsWith("http") ? location.host : ""}`.trim();
+    if (sig){ g.textAlign = "right"; g.fillText(sig, W - 16, H + 49); }
+    out.toBlob(b => {
+      if (!b) return;
+      const a = document.createElement("a");
+      const d = S.fetchedAt, stamp = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
+      a.href = URL.createObjectURL(b);
+      a.download = `${S.name.replace(/[^A-Z0-9]+/gi, "-")}-candles-${stamp}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    }, "image/png");
+  }
+
+  /* ---------- controls ---------- */
+  let typingTimer;
+  function applyName(force){
+    const n = cleanName(nameIn.value);
+    if (n === S.name && !force) return;
+    S.name = n;
+    if (!S.series.length) return;
+    relayout(); startAnim(); updateSummary();
+  }
+  nameIn.addEventListener("input", () => { clearTimeout(typingTimer); typingTimer = setTimeout(() => applyName(false), 380); });
+  nameIn.addEventListener("keydown", e => { if (e.key === "Enter"){ clearTimeout(typingTimer); applyName(true); } });
+  drawBtn.addEventListener("click", () => { clearTimeout(typingTimer); S.name = cleanName(nameIn.value); scan(true); });
+  stocksToggle.addEventListener("click", () => {
+    if (store.get("cn.key")){ store.del("cn.key"); S.stockCache = null; updateStocksToggle(); scan(true); }
+    else { keyRow.hidden = false; keyIn.focus(); }
+  });
+  keySave.addEventListener("click", () => {
+    const k = keyIn.value.trim(); if (!k){ keyIn.focus(); return; }
+    store.set("cn.key", k); keyIn.value = ""; keyRow.hidden = true; S.stockCache = null;
+    updateStocksToggle(); scan(true);
+  });
+  keyIn.addEventListener("keydown", e => { if (e.key === "Enter") keySave.click(); });
+  saveBtn.addEventListener("click", savePng);
+  densityIn.value = S.density; densityVal.textContent = S.density;
+  let densityTimer;
+  densityIn.addEventListener("input", () => {
+    S.density = +densityIn.value; densityVal.textContent = S.density; store.set("cn.across", S.density);
+    clearTimeout(densityTimer);
+    densityTimer = setTimeout(() => { if (S.series.length){ relayout(); startAnim(); updateSummary(); } }, 120);
+  });
+
+  let resizeTimer;
+  new ResizeObserver(() => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (canvas.clientWidth === S.cssW && canvas.clientHeight === S.cssH) return;
+      sizeCanvas(); relayout(); render(); updateSummary();
+    }, 150);
+  }).observe(wrap);
+
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && S.fetchedAt && Date.now() - S.fetchedAt > 45000) scan(false); });
+
+  /* ---------- start ---------- */
+  async function init(){
+    updateStocksToggle(); sizeCanvas(); render();
+    try {
+      await Promise.race([
+        Promise.all([document.fonts.load(`800 240px "Bricolage Grotesque"`), document.fonts.load(`600 11px "Bricolage Grotesque"`)]),
+        new Promise(r => setTimeout(r, 2500))
+      ]);
+    } catch(e){}
+    fontReady = document.fonts ? document.fonts.check(`800 240px "Bricolage Grotesque"`) : false;
+    await scan(true);
+    setInterval(() => { if (!document.hidden) scan(false); }, REFRESH_MS);
+  }
+  init();
+})();
+</script>
+</body>
+</html>

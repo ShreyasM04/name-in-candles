@@ -1,0 +1,2 @@
+# Fetch Coinbase market data through Netlify so browsers never block it
+/cb/*  https://api.exchange.coinbase.com/:splat  200

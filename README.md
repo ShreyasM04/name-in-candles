@@ -2,7 +2,7 @@
 
 Type your name and watch it get drawn out of live crypto candlestick charts.
 
-**Try it:** https://YOUR-SITE.netlify.app
+**Try it:** https://nameincandles.netlify.app
 
 ![Preview](preview.png)
 
@@ -20,4 +20,4 @@ Type your name and watch it get drawn out of live crypto candlestick charts.
 - `_redirects` tells Netlify to fetch Coinbase data on the page's behalf, so no browser blocks it.
 - `preview.png` is the image LinkedIn and other sites show when the link is shared.
 
-Built by YOUR NAME. [LinkedIn](https://www.linkedin.com/in/YOUR-PROFILE)
+Built by YOUR NAME. [LinkedIn](https://www.linkedin.com/in/shreyas-mahishkar)
